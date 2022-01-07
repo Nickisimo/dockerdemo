@@ -1,0 +1,70 @@
+buildscript {
+    repositories {
+        maven { url 'http://repository.paychex.com:8081/artifactory/internal-artifacts' }
+        maven { url 'http://repository.paychex.com:8081/artifactory/public' }
+        maven { url 'http://repository.paychex.com:8081/artifactory/plugins-release' }
+        maven { url 'http://repository.paychex.com:8081/artifactory/external' }
+    }
+
+    dependencies {
+        classpath 'com.paychex.eba:internal-artifacts:+'
+        classpath "com.paychex.slac:docker-image:master.+"
+        classpath 'com.paychex.slac:git-state:master.+'
+        classpath 'com.paychex.slac.gradle:publish-artifactory:master.+'
+        classpath 'com.paychex.slac:gradle-plugin-imagecertification:master.+'
+    }
+}
+
+apply plugin: com.paychex.slac.image.docker.plugins.DockerImagePlugin
+apply plugin: com.paychex.slac.imagecertification.plugin.ImageCertificationPlugin
+apply plugin: 'com.paychex.eba.internal-artifacts'
+apply plugin: "com.paychex.slac.git-state"
+
+imageCertification {
+    dockerPullRegistry = "pxt-prerelease-docker-local.registry.paychex.com"
+    dockerPushRegistry = "pxt-release-docker-local.registry.paychex.com"
+}
+
+images {
+    repositories {
+        docker {
+            name = "prerelease"
+            registry = "${System.env.DOCKER_APP_PRERELEASE ?: 'pxt-prerelease-docker-local.registry.paychex.com'}"
+        }
+    }
+
+    images {
+        insurancetests(DockerImage) {
+            dockerFile = "Dockerfile"
+            repository = "${dockerNamespace}/${dockerImageBaseName}"
+            tags = [project.version, "latest"]
+        }
+    }
+}
+
+
+println 'HERE I AM 1'
+println "${projectDir}"
+println "${buildDir}"
+println 'HERE I AM 2'
+
+
+task copyRobotTest_1(type: Copy) {
+    from ("${projectDir}/robot-tests")
+    into "${buildDir}/robot-tests"
+}
+
+task copyRobotParser(type: Copy) {
+    from ("${projectDir}/pxt-robot-parser.py")
+    into "${buildDir}"
+}
+
+task copyRunnerScript(type: Copy) {
+    from ("${projectDir}/pxt-runner.sh")
+    into "${buildDir}"
+}
+
+
+imageBuild.dependsOn(copyRobotTest_1)
+imageBuild.dependsOn(copyRobotParser)
+imageBuild.dependsOn(copyRunnerScript)
